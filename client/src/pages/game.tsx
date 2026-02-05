@@ -80,14 +80,18 @@ export default function GameSession() {
                           <div className="flex items-center gap-6">
                               <span className={cn("font-display font-bold text-3xl w-8", i===0 ? "text-accent" : "text-muted-foreground")}>#{i+1}</span>
                               <div className="flex items-center gap-3">
-                                {p.userId && room.players.find(player => player.id === p.id)?.name && (
-                                  <div className="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 overflow-hidden">
-                                     {/* We'd need to sync avatar URL to player object if we want it here */}
-                                  </div>
-                                )}
+                                <div className="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 overflow-hidden">
+                                   {p.profileImageUrl ? (
+                                     <img src={p.profileImageUrl} alt={p.name} className="w-full h-full object-cover" />
+                                   ) : (
+                                     <div className="w-full h-full flex items-center justify-center text-xs font-bold text-zinc-500">
+                                       {p.name[0]}
+                                     </div>
+                                   )}
+                                </div>
                                 <div className="text-left flex items-center gap-2">
-                                  {user?.profileImageUrl && p.userId === user.id && (
-                                    <img src={user.profileImageUrl} alt={p.name} className="w-6 h-6 rounded-full border border-white/10" />
+                                  {p.profileImageUrl && (
+                                    <img src={p.profileImageUrl} alt={p.name} className="w-6 h-6 rounded-full border border-white/10" />
                                   )}
                                   <span className="font-bold text-xl block">{p.name}</span>
                                   {p.isBot && <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">[AI CONSTRUCT]</span>}

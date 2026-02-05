@@ -83,6 +83,7 @@ export const players = pgTable("players", {
   isHost: boolean("is_host").default(false).notNull(),
   isBot: boolean("is_bot").default(false).notNull(),
   status: text("status", { enum: ['idle', 'exercising', 'rest'] }).default('idle').notNull(),
+  profileImageUrl: text("profile_image_url"),
 });
 
 // === SCHEMAS ===
