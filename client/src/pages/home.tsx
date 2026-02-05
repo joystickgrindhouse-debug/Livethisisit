@@ -11,7 +11,7 @@ import { Flame, Users, Trophy, ChevronRight, Loader2, LogOut, Globe, Lock, Shiel
 import { cn } from "@/lib/utils";
 
 export default function Home() {
-  const { user, firebaseUser, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [_, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("public");
   const [focusArea, setFocusArea] = useState<"arms" | "legs" | "core" | "total">("total");
@@ -20,6 +20,14 @@ export default function Home() {
   
   const createRoom = useCreateRoom();
   const joinRoom = useJoinRoom();
+
+  const handleLogin = () => {
+    window.location.href = "/api/login";
+  };
+
+  const handleLogout = () => {
+    window.location.href = "/api/logout";
+  };
 
   const handleStartSearch = async () => {
     setIsSearching(true);
@@ -34,7 +42,7 @@ export default function Home() {
             restTime: 15
           },
           isPublic: true,
-          hostName: user?.displayName || firebaseUser?.displayName || "Rival"
+          hostName: user?.firstName || "Rival"
         });
         setLocation(`/room/${result.code}`);
       } catch (e) {
@@ -49,7 +57,7 @@ export default function Home() {
     try {
       const result = await joinRoom.mutateAsync({
         code: code.toUpperCase(),
-        playerName: user?.displayName || firebaseUser?.displayName || "Rival",
+        playerName: user?.firstName || "Rival",
       });
       setLocation(`/room/${result.room.code}`);
     } catch (e) {
@@ -65,21 +73,24 @@ export default function Home() {
       <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
         {loading ? (
           <Loader2 className="animate-spin text-zinc-500" size={20} />
-        ) : firebaseUser ? (
+        ) : user ? (
           <div className="flex items-center gap-4 bg-zinc-900/80 border border-white/5 p-2 rounded-lg backdrop-blur-sm">
+            {user.profileImageUrl && (
+              <img src={user.profileImageUrl} alt={user.firstName} className="w-8 h-8 rounded-full border border-white/10" />
+            )}
             <div className="flex flex-col items-end">
-              <span className="text-xs font-bold text-white">{user?.displayName || firebaseUser.displayName}</span>
+              <span className="text-xs font-bold text-white">{user.firstName} {user.lastName}</span>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-zinc-400 flex items-center gap-1"><Trophy size={10} className="text-yellow-500" /> {user?.score || 0}</span>
-                <span className="text-[10px] text-zinc-400 flex items-center gap-1"><Ticket size={10} className="text-red-500" /> {user?.raffleTickets || 0}</span>
+                <span className="text-[10px] text-zinc-400 flex items-center gap-1"><Trophy size={10} className="text-yellow-500" /> {user.score || 0}</span>
+                <span className="text-[10px] text-zinc-400 flex items-center gap-1"><Ticket size={10} className="text-red-500" /> {user.raffleTickets || 0}</span>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => logout()} className="text-zinc-500 hover:text-white">
+            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-zinc-500 hover:text-white">
               <LogOut size={16} />
             </Button>
           </div>
         ) : (
-          <Button onClick={() => signInWithGoogle()} className="bg-white text-black hover:bg-zinc-200 gap-2 font-bold text-xs uppercase tracking-widest">
+          <Button onClick={handleLogin} className="bg-white text-black hover:bg-zinc-200 gap-2 font-bold text-xs uppercase tracking-widest">
             <LogIn size={14} /> SIGN IN
           </Button>
         )}

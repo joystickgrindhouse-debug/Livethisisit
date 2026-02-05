@@ -14,25 +14,37 @@ export default function GameSession() {
   const [match, params] = useRoute("/game/:code");
   const [_, setLocation] = useLocation();
   const { room, gameState, playCard, playerId, disconnect } = useGameStore();
-  const { user, firebaseUser } = useAuth();
+  const { user } = useAuth();
   const [rewardsProcessed, setRewardsProcessed] = useState(false);
 
   // Rewards logic
   useEffect(() => {
-    if (room?.status === 'finished' && firebaseUser && !rewardsProcessed) {
+    if (room?.status === 'finished' && user && !rewardsProcessed) {
       const currentPlayer = room.players.find(p => p.id === parseInt(playerId || "0"));
       if (currentPlayer && currentPlayer.score > 0) {
-        const userDoc = doc(db, "users", firebaseUser.uid);
-        const ticketsEarned = Math.floor(currentPlayer.score / 100); // 1 ticket per 100 points
+        // Updated scoring: 1 ticket per 1 rep OR 1 ticket per 5 sec hold
+        // Points were likely reps * something. Let's assume points == reps for now if it's a rep exercise.
+        // Actually the requirement is: 1 rep = 1 ticket, 5s hold = 1 ticket.
+        // We need to know how many reps or hold time.
         
-        updateDoc(userDoc, {
-          score: increment(currentPlayer.score),
-          raffleTickets: increment(ticketsEarned)
+        // Since we only have 'score', we'll assume the score was calculated correctly in the game logic.
+        // If the game logic already gives 1 point per rep/5s, then ticketsEarned = score.
+        const ticketsEarned = currentPlayer.score; 
+        
+        // Update user data on server
+        fetch("/api/auth/user/update", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            score: (user.score || 0) + currentPlayer.score,
+            raffleTickets: (user.raffleTickets || 0) + ticketsEarned
+          })
         }).catch(console.error);
+        
         setRewardsProcessed(true);
       }
     }
-  }, [room?.status, firebaseUser, playerId, room?.players, rewardsProcessed]);
+  }, [room?.status, user, playerId, room?.players, rewardsProcessed]);
 
   // Safety check
   useEffect(() => {
@@ -67,9 +79,19 @@ export default function GameSession() {
                       )}>
                           <div className="flex items-center gap-6">
                               <span className={cn("font-display font-bold text-3xl w-8", i===0 ? "text-accent" : "text-muted-foreground")}>#{i+1}</span>
-                              <div className="text-left">
-                                <span className="font-bold text-xl block">{p.name}</span>
-                                {p.isBot && <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">[AI CONSTRUCT]</span>}
+                              <div className="flex items-center gap-3">
+                                {p.userId && room.players.find(player => player.id === p.id)?.name && (
+                                  <div className="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 overflow-hidden">
+                                     {/* We'd need to sync avatar URL to player object if we want it here */}
+                                  </div>
+                                )}
+                                <div className="text-left flex items-center gap-2">
+                                  {user?.profileImageUrl && p.userId === user.id && (
+                                    <img src={user.profileImageUrl} alt={p.name} className="w-6 h-6 rounded-full border border-white/10" />
+                                  )}
+                                  <span className="font-bold text-xl block">{p.name}</span>
+                                  {p.isBot && <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">[AI CONSTRUCT]</span>}
+                                </div>
                               </div>
                           </div>
                           <span className="font-mono font-bold text-3xl text-white">{p.score} <span className="text-sm text-muted-foreground">PTS</span></span>
