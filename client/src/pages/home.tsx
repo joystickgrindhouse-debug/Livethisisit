@@ -1,29 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { useJoinRoom } from "@/hooks/use-rooms";
-import { CreateRoomDialog } from "@/components/CreateRoomDialog";
+import { useJoinRoom, useCreateRoom } from "@/hooks/use-rooms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Flame, Users, Trophy, ChevronRight, Loader2, LogOut } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Flame, Users, Trophy, ChevronRight, Loader2, LogOut, Globe, Lock, Shield } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [_, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState("public");
+  const [focusArea, setFocusArea] = useState<"arms" | "legs" | "core" | "total">("total");
+  const [isSearching, setIsSearching] = useState(false);
   const [code, setCode] = useState("");
-  const [guestName, setGuestName] = useState("");
   
+  const createRoom = useCreateRoom();
   const joinRoom = useJoinRoom();
 
-  const handleJoin = async () => {
+  const handleStartSearch = async () => {
+    setIsSearching(true);
+    // Simulate matchmaking delay
+    setTimeout(async () => {
+      try {
+        const result = await createRoom.mutateAsync({
+          settings: {
+            focusArea,
+            burnoutType: 'classic',
+            roundTime: 45,
+            rounds: 3,
+            restTime: 15
+          },
+          isPublic: true,
+          hostName: user?.firstName || "Rival"
+        });
+        setLocation(`/room/${result.code}`);
+      } catch (e) {
+        console.error(e);
+        setIsSearching(false);
+      }
+    }, 1500);
+  };
+
+  const handleJoinPrivate = async () => {
     if (!code) return;
-    const name = user?.firstName || guestName || "Guest";
-    
     try {
       const result = await joinRoom.mutateAsync({
         code: code.toUpperCase(),
-        playerName: name,
+        playerName: user?.firstName || "Rival",
       });
       setLocation(`/room/${result.room.code}`);
     } catch (e) {
@@ -32,115 +58,133 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background bg-grid-pattern relative overflow-hidden flex flex-col">
-      {/* Navbar */}
-      <nav className="border-b border-white/10 bg-background/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-primary p-1.5 rounded-lg rotate-3 shadow-[0_0_15px_rgba(34,197,94,0.5)]">
-              <Flame className="w-6 h-6 text-black fill-current" />
-            </div>
-            <span className="font-display font-bold text-2xl tracking-tight text-white">
-              RIVALIS <span className="text-primary">LIVE</span>
-            </span>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {isAuthenticated ? (
-              <div className="flex items-center gap-3">
-                <div className="text-right hidden sm:block">
-                  <div className="text-sm font-bold text-white uppercase">{user?.firstName}</div>
-                  <div className="text-[10px] text-muted-foreground font-mono">LEVEL 12</div>
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 bg-grid-pattern overflow-hidden relative">
+      <div className="absolute inset-0 bg-gradient-to-b from-red-950/20 via-transparent to-transparent pointer-events-none" />
+      
+      {/* Header */}
+      <div className="text-center mb-12 relative z-10">
+        <h1 className="text-6xl md:text-8xl font-black font-display tracking-tighter text-white italic">
+          RIVALIS
+        </h1>
+        <div className="text-primary font-mono tracking-[0.5em] text-sm font-bold mt-[-10px]">
+          LIVE MODE
+        </div>
+      </div>
+
+      {/* Main Container */}
+      <div className="w-full max-w-lg z-10">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-2 w-64 mx-auto bg-zinc-900/80 border border-white/5 p-1 mb-8">
+            <TabsTrigger value="public" className="data-[state=active]:bg-red-600 data-[state=active]:text-white uppercase font-bold text-xs tracking-widest gap-2">
+              <Globe size={14} /> PUBLIC
+            </TabsTrigger>
+            <TabsTrigger value="private" className="data-[state=active]:bg-red-600 data-[state=active]:text-white uppercase font-bold text-xs tracking-widest gap-2">
+              <Lock size={14} /> PRIVATE
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="public">
+            <Card className="bg-zinc-950/40 border-red-600/20 backdrop-blur-xl">
+              <CardContent className="p-8 space-y-8">
+                <div className="text-center space-y-1">
+                  <h2 className="text-xl font-display text-red-600 font-bold tracking-widest">FIND MATCH</h2>
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Ranked matchmaking • Open lobby</p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-secondary border border-white/10 flex items-center justify-center font-display font-bold text-lg text-primary">
-                  {user?.firstName?.[0]}
+
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">1. SELECT FOCUS AREA</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['ARMS', 'LEGS', 'CORE', 'TOTAL BODY'].map((area) => {
+                      const id = area.toLowerCase().replace(' body', '') as any;
+                      return (
+                        <Button
+                          key={area}
+                          variant="outline"
+                          className={cn(
+                            "h-14 font-display font-bold border-white/5 bg-zinc-900/50 hover:bg-zinc-800 transition-all",
+                            focusArea === id && "border-red-600 bg-red-600/10 text-white shadow-[0_0_15px_rgba(220,38,38,0.2)]"
+                          )}
+                          onClick={() => setFocusArea(id)}
+                        >
+                          {area}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => logout()}>
-                  <LogOut className="w-4 h-4" />
+
+                <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 hover:text-red-500 transition-colors cursor-pointer group uppercase tracking-widest">
+                  <Flame size={12} className="text-red-600" />
+                  <span>2. SHOW ADVANCED MODES</span>
+                  <span className="text-zinc-700 ml-auto italic">Default: Classic Burnout</span>
+                </div>
+
+                <Button 
+                  className="w-full h-16 bg-red-600 hover:bg-red-700 text-white font-display text-xl font-black italic tracking-widest shadow-[0_10px_30px_rgba(220,38,38,0.4)] transition-all active:scale-95"
+                  onClick={handleStartSearch}
+                  disabled={isSearching}
+                >
+                  {isSearching ? <Loader2 className="animate-spin" /> : "START SEARCH"}
                 </Button>
-              </div>
-            ) : (
-              <Button variant="outline" className="border-primary/50 text-primary hover:bg-primary/10 uppercase font-bold text-xs tracking-widest" onClick={() => window.location.href = '/api/login'}>
-                Login with Replit
-              </Button>
-            )}
-          </div>
-        </div>
-      </nav>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      <main className="flex-1 flex flex-col items-center justify-center p-4 relative z-10">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 blur-[120px] rounded-full -z-10 animate-pulse" />
-        
-        <div className="max-w-4xl w-full text-center space-y-8 mb-12">
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black font-display text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/50 tracking-tighter drop-shadow-2xl">
-            COMPETE.<br/>
-            <span className="text-stroke text-transparent">SYNC.</span>
-            <span className="text-primary"> DOMINATE.</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
-            The world's first real-time battle royale fitness game. Join a lobby, sync your workout, and outlast your opponents in high-intensity interval challenges.
-          </p>
-        </div>
+          <TabsContent value="private">
+            <Card className="bg-zinc-950/40 border-white/5 backdrop-blur-xl">
+              <CardContent className="p-8 space-y-8">
+                <div className="text-center space-y-1">
+                  <h2 className="text-xl font-display text-white font-bold tracking-widest">PRIVATE LOBBY</h2>
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Invite only • Competitive play</p>
+                </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
-          {/* Create Room Card */}
-          <Card className="bg-black/40 backdrop-blur-sm border-white/10 hover:border-primary/50 transition-all group overflow-hidden relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <CardContent className="p-8 space-y-6 relative">
-              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Trophy className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="text-2xl font-bold text-white">Host a Match</h3>
-              <p className="text-muted-foreground text-sm">Create a private lobby or public match. Configure exercises, rounds, and burnout intensity.</p>
-              
-              <CreateRoomDialog />
-            </CardContent>
-          </Card>
-
-          {/* Join Room Card */}
-          <Card className="bg-black/40 backdrop-blur-sm border-white/10 hover:border-accent/50 transition-all group overflow-hidden relative">
-             <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <CardContent className="p-8 space-y-6 relative">
-              <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Users className="w-6 h-6 text-accent" />
-              </div>
-              <h3 className="text-2xl font-bold text-white">Join the Fight</h3>
-              <p className="text-muted-foreground text-sm">Enter a room code to join an existing lobby and challenge your friends.</p>
-              
-              <div className="space-y-3">
-                {!isAuthenticated && (
-                   <Input 
-                   placeholder="YOUR NAME" 
-                   value={guestName}
-                   onChange={(e) => setGuestName(e.target.value)}
-                   className="bg-black/50 border-white/10 h-12 text-center uppercase tracking-widest font-bold"
-                 />
-                )}
-                <div className="flex gap-2">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">ENTER ROOM CODE</label>
                   <Input 
-                    placeholder="ENTER ROOM CODE" 
+                    placeholder="X Y Z 1 2 3"
+                    className="h-16 bg-zinc-900/50 border-white/5 text-center text-3xl font-mono font-bold uppercase tracking-[0.5em] focus:border-red-600 transition-all"
                     value={code}
-                    onChange={(e) => setCode(e.target.value.toUpperCase())}
-                    className="bg-black/50 border-white/10 h-12 text-center uppercase tracking-widest font-bold text-lg"
+                    onChange={(e) => setCode(e.target.value)}
                     maxLength={6}
                   />
-                  <Button 
-                    size="icon" 
-                    className="h-12 w-12 bg-accent hover:bg-accent/80 text-black shrink-0"
-                    onClick={handleJoin}
-                    disabled={joinRoom.isPending || !code || (!guestName && !isAuthenticated)}
-                  >
-                    {joinRoom.isPending ? <Loader2 className="animate-spin" /> : <ChevronRight />}
-                  </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
 
-      <footer className="py-6 border-t border-white/5 bg-black/20 text-center">
-        <p className="text-xs text-muted-foreground font-mono">RIVALIS LIVE SYNC v1.0 • SYSTEM OPERATIONAL</p>
+                <Button 
+                  className="w-full h-16 bg-white text-black hover:bg-zinc-200 font-display text-xl font-black italic tracking-widest transition-all active:scale-95"
+                  onClick={handleJoinPrivate}
+                  disabled={!code || joinRoom.isPending}
+                >
+                  {joinRoom.isPending ? <Loader2 className="animate-spin" /> : "JOIN ROOM"}
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
+                  <div className="relative flex justify-center text-[10px] uppercase tracking-widest"><span className="bg-transparent px-2 text-zinc-600 font-bold">OR</span></div>
+                </div>
+
+                <Button 
+                  variant="outline"
+                  className="w-full h-14 border-white/10 hover:bg-white/5 font-bold uppercase tracking-widest"
+                  onClick={() => {
+                    setActiveTab("public");
+                    handleStartSearch();
+                  }}
+                >
+                  Create Custom Event
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* User Info */}
+        <div className="mt-8 text-center text-[10px] font-mono font-bold text-zinc-600 uppercase tracking-widest">
+          Logged in as <span className="text-red-600 italic">{user?.firstName || "Rival 61"}</span>
+        </div>
+      </div>
+
+      <footer className="absolute bottom-8 text-[8px] text-zinc-800 font-mono tracking-[0.5em] uppercase">
+        Rivalis Systems • Online • Low Latency Mode Active
       </footer>
     </div>
   );

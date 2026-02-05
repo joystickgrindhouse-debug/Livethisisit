@@ -21,53 +21,41 @@ export async function registerRoutes(
     try {
       const input = api.rooms.create.input.parse(req.body);
       
-      const code = nanoid(6).toUpperCase(); // Short code
-      
-      const room = await storage.createRoom({
-        code,
-        hostId: req.user ? (req.user as any).claims.sub : input.hostName, // Use User ID or Guest Name as Host ID
-        isPublic: input.isPublic,
-        settings: input.settings,
-        status: 'lobby',
-        gameState: null,
-      });
+      let room;
+      if (input.isPublic) {
+        // Find existing public lobby with same focus area
+        const publicRooms = await storage.listPublicRooms();
+        room = publicRooms.find(r => r.settings.focusArea === input.settings.focusArea);
+      }
 
-      // Create Host Player
+      if (!room) {
+        const code = nanoid(6).toUpperCase();
+        room = await storage.createRoom({
+          code,
+          hostId: req.user ? (req.user as any).claims.sub : input.hostName,
+          isPublic: input.isPublic,
+          settings: input.settings,
+          status: 'lobby',
+          gameState: null,
+        });
+      }
+
+      // Create Player
       const sessionId = nanoid();
       const player = await storage.addPlayer({
-        roomCode: code,
-        name: req.user ? ((req.user as any).claims.first_name || 'Host') : input.hostName,
+        roomCode: room.code,
+        name: req.user ? ((req.user as any).claims.first_name || 'Rival') : input.hostName,
         userId: req.user ? (req.user as any).claims.sub : null,
         sessionId,
-        isHost: true,
-        ready: true, // Host is implicitly ready? Maybe not.
+        isHost: room.hostId === (req.user ? (req.user as any).claims.sub : input.hostName),
+        ready: true,
       });
 
-      const players = [player];
-      // Attach sessionId as token for the creator
-      // We wrap the response to include the token, matching the schema if we had one for this specific structure
-      // But the route definition says 201 returns Room & { players }. 
-      // The join route returns the token. 
-      // Ideally create also returns a token so the host can "join" via WS.
-      // Let's modify the response or just rely on the frontend to call "join" immediately?
-      // Better: Create returns room, then frontend calls join? No, that's 2 calls.
-      // Let's return the token in a header or cookies? Or just include it in response and cast type.
-      
-      // Hack for simplicity: Host joins automatically on client side?
-      // Actually, frontend will need `sessionId` to connect WS.
-      // Let's send it in the response body, even if schema doesn't strictly explicitly say it (Zod `custom` allows extras if not strict)
-      // Or better, let's stick to the flow: Create Room -> Success -> Join Room (via Socket/API).
-      // But we just created the player record! We shouldn't create it again.
-      // So Create Room endpoint *should* return the session token.
-      
+      const players = await storage.getRoomPlayers(room.code);
       res.status(201).json({ ...room, players, token: sessionId }); 
     } catch (err) {
-        console.error(err);
-      if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
-      }
+      console.error(err);
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
@@ -182,6 +170,31 @@ export async function registerRoutes(
       try {
         const message = JSON.parse(data.toString());
         
+        // Auto-fill bots if not enough players (Humanized Bot logic)
+        const playersCount = (roomsMap.get(roomCode)?.size || 0);
+        if (playersCount < 2) {
+           // Simple delay before adding a bot
+           setTimeout(async () => {
+             const currentPlayers = await storage.getRoomPlayers(roomCode);
+             if (currentPlayers.length < 2) {
+                const botNames = ['CyberJock', 'RepReaper', 'CardioKing', 'GlitchFit', 'NeonStrider'];
+                const botName = botNames[Math.floor(Math.random() * botNames.length)];
+                await storage.addPlayer({
+                  roomCode,
+                  name: botName,
+                  sessionId: 'bot-' + nanoid(4),
+                  isBot: true,
+                  ready: true,
+                  isHost: false
+                });
+                // Full sync to everyone
+                const updatedPlayers = await storage.getRoomPlayers(roomCode);
+                const room = await storage.getRoom(roomCode);
+                broadcast({ type: 'SYNC_ROOM', payload: { ...room, players: updatedPlayers } });
+             }
+           }, 5000);
+        }
+
         // Handle Game State Updates (From Host)
         if (message.type === 'UPDATE_STATE') {
           // Ideally verify ws belongs to host, but for lite build we trust the client logic (Host only sends this)
