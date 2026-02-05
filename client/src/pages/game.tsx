@@ -8,11 +8,12 @@ import { Flame, Clock, Trophy, HeartPulse, Ticket } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { doc, updateDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Badge } from "@/components/ui/badge";
 
 export default function GameSession() {
   const [match, params] = useRoute("/game/:code");
   const [_, setLocation] = useLocation();
-  const { room, gameState, playCard, endGame, playerId, disconnect } = useGameStore();
+  const { room, gameState, playCard, playerId, disconnect } = useGameStore();
   const { user, firebaseUser } = useAuth();
   const [rewardsProcessed, setRewardsProcessed] = useState(false);
 
