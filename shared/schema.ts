@@ -1,9 +1,21 @@
 import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { users } from "./models/auth";
+export const users = pgTable("users", {
+  id: text("id").primaryKey(), // Firebase UID
+  email: text("email").unique(),
+  displayName: text("display_name"),
+  score: integer("score").default(0).notNull(),
+  raffleTickets: integer("raffle_tickets").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
-export * from "./models/auth";
+export const insertUserSchema = createInsertSchema(users).omit({ 
+  createdAt: true 
+});
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
 // === TYPES FROM ORIGINAL PROJECT ===
 export type FocusArea = 'arms' | 'legs' | 'core' | 'total';

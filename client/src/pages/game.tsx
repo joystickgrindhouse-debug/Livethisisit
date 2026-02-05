@@ -4,12 +4,34 @@ import { MOCK_DECK, CardOverlay } from "@/components/CardOverlay";
 import { Button } from "@/components/ui/button";
 import { useLocation, useRoute } from "wouter";
 import { cn } from "@/lib/utils";
-import { Flame, Clock, Trophy, HeartPulse } from "lucide-react";
+import { Flame, Clock, Trophy, HeartPulse, Ticket } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { doc, updateDoc, increment } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function GameSession() {
   const [match, params] = useRoute("/game/:code");
   const [_, setLocation] = useLocation();
   const { room, gameState, playCard, endGame, playerId, disconnect } = useGameStore();
+  const { user, firebaseUser } = useAuth();
+  const [rewardsProcessed, setRewardsProcessed] = useState(false);
+
+  // Rewards logic
+  useEffect(() => {
+    if (room?.status === 'finished' && firebaseUser && !rewardsProcessed) {
+      const currentPlayer = room.players.find(p => p.id === parseInt(playerId || "0"));
+      if (currentPlayer && currentPlayer.score > 0) {
+        const userDoc = doc(db, "users", firebaseUser.uid);
+        const ticketsEarned = Math.floor(currentPlayer.score / 100); // 1 ticket per 100 points
+        
+        updateDoc(userDoc, {
+          score: increment(currentPlayer.score),
+          raffleTickets: increment(ticketsEarned)
+        }).catch(console.error);
+        setRewardsProcessed(true);
+      }
+    }
+  }, [room?.status, firebaseUser, playerId, room?.players, rewardsProcessed]);
 
   // Safety check
   useEffect(() => {
