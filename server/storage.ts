@@ -75,11 +75,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addPlayer(player: InsertPlayer): Promise<Player> {
-    const userData = player.userId ? await authStorage.getUser(player.userId) : null;
-    const [newPlayer] = await db.insert(players).values({
-      ...player,
-      profileImageUrl: userData?.profileImageUrl
-    }).returning();
+    const [newPlayer] = await db.insert(players).values(player).returning();
     return newPlayer;
   }
 

@@ -44,10 +44,10 @@ export async function registerRoutes(
       const sessionId = nanoid();
       const player = await storage.addPlayer({
         roomCode: room.code,
-        name: req.user ? ((req.user as any).claims.first_name || 'Rival') : input.hostName,
-        userId: req.user ? (req.user as any).claims.sub : null,
+        name: input.hostName,
+        userId: null,
         sessionId,
-        isHost: room.hostId === (req.user ? (req.user as any).claims.sub : input.hostName),
+        isHost: true,
         ready: true,
       });
 
@@ -68,17 +68,15 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Room not found" });
       }
 
-      // Check if user already exists (re-join) via Auth or Session?
-      // For now, always create new player unless we implement sophisticated re-join logic.
-      // Or check if name exists in room?
-      
+      // Create Player
       const sessionId = nanoid();
       const player = await storage.addPlayer({
         roomCode: room.code,
-        name: req.user ? ((req.user as any).claims.first_name || 'Player') : input.playerName,
-        userId: req.user ? (req.user as any).claims.sub : null,
+        name: input.playerName,
+        userId: null,
         sessionId,
-        isHost: false
+        isHost: false,
+        ready: false
       });
 
       res.json({

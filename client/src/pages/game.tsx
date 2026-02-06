@@ -14,37 +14,30 @@ export default function GameSession() {
   const [match, params] = useRoute("/game/:code");
   const [_, setLocation] = useLocation();
   const { room, gameState, playCard, playerId, disconnect } = useGameStore();
-  const { user } = useAuth();
+  const { user, firebaseUser } = useAuth();
   const [rewardsProcessed, setRewardsProcessed] = useState(false);
 
   // Rewards logic
   useEffect(() => {
-    if (room?.status === 'finished' && user && !rewardsProcessed) {
+    if (room?.status === 'finished' && firebaseUser && !rewardsProcessed) {
       const currentPlayer = room.players.find(p => p.id === parseInt(playerId || "0"));
       if (currentPlayer && currentPlayer.score > 0) {
-        // Updated scoring: 1 ticket per 1 rep OR 1 ticket per 5 sec hold
-        // Points were likely reps * something. Let's assume points == reps for now if it's a rep exercise.
-        // Actually the requirement is: 1 rep = 1 ticket, 5s hold = 1 ticket.
-        // We need to know how many reps or hold time.
+        const userDoc = doc(db, "users", firebaseUser.uid);
         
-        // Since we only have 'score', we'll assume the score was calculated correctly in the game logic.
-        // If the game logic already gives 1 point per rep/5s, then ticketsEarned = score.
+        // Updated scoring: 1 ticket per 1 rep OR 1 ticket per 5 sec hold
+        // The requirement is: 1 rep = 1 ticket, 5s hold = 1 ticket.
+        // We assume score already accounts for this mapping.
         const ticketsEarned = currentPlayer.score; 
         
-        // Update user data on server
-        fetch("/api/auth/user/update", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            score: (user.score || 0) + currentPlayer.score,
-            raffleTickets: (user.raffleTickets || 0) + ticketsEarned
-          })
+        updateDoc(userDoc, {
+          score: increment(currentPlayer.score),
+          raffleTickets: increment(ticketsEarned)
         }).catch(console.error);
         
         setRewardsProcessed(true);
       }
     }
-  }, [room?.status, user, playerId, room?.players, rewardsProcessed]);
+  }, [room?.status, firebaseUser, playerId, room?.players, rewardsProcessed]);
 
   // Safety check
   useEffect(() => {
