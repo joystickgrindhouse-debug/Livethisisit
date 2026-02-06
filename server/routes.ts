@@ -36,7 +36,6 @@ export async function registerRoutes(
           isPublic: input.isPublic,
           settings: input.settings,
           status: 'lobby',
-          gameState: null,
         });
       }
 
@@ -94,7 +93,8 @@ export async function registerRoutes(
   });
 
   app.get(api.rooms.get.path, async (req, res) => {
-    const room = await storage.getRoom(req.params.code);
+    const code = req.params.code as string;
+    const room = await storage.getRoom(code);
     if (!room) return res.status(404).json({ message: "Room not found" });
     
     const players = await storage.getRoomPlayers(room.code);

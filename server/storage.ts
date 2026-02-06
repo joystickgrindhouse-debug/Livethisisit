@@ -33,7 +33,7 @@ export class DatabaseStorage implements IStorage {
   upsertUser = authStorage.upsertUser.bind(authStorage);
 
   async createRoom(room: InsertRoom): Promise<Room> {
-    const [newRoom] = await db.insert(rooms).values(room).returning();
+    const [newRoom] = await db.insert(rooms).values(room as any).returning();
     return newRoom;
   }
 
