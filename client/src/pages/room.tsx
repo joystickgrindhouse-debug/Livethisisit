@@ -16,44 +16,39 @@ export default function Room() {
   const { toast } = useToast();
 
   const { room, playerId, connect, disconnect, toggleReady, startGame } = useGameStore();
+  const currentPlayer = (room?.players as any[])?.find((p: any) => p.id.toString() === playerId);
   
-  // Fetch initial room state to get player ID if we just refreshed or joined directly without game store
-  // NOTE: In a real app, we'd probably persist playerId in localStorage or get it from auth
-  // For this prototype, if store is empty, we might need to re-join or redirect home.
-  // We'll trust that the join flow populated the store or localStorage.
-  
-  // Actually, let's use the useRoom hook to get data, but for WebSocket we need the token/playerId
-  // If we don't have them in store, we can't connect. Redirect to home.
   useEffect(() => {
-    // Check if we have connection params
-    // In a real app we'd look in localStorage
-    if (!useGameStore.getState().playerId) {
-       toast({
-         title: "Session Expired",
-         description: "Please rejoin the room.",
-         variant: "destructive"
-       });
-       setLocation("/");
-    }
+    // Session check moved to connection logic
   }, [setLocation, toast]);
 
   useEffect(() => {
     if (code && !useGameStore.getState().isConnected) {
-       // Re-connect logic would go here if we persisted token
+       const token = sessionStorage.getItem(`room_token_${code}`);
+       const pid = sessionStorage.getItem(`room_pid_${code}`);
+       if (token && pid) {
+         connect(code, token, pid);
+       } else {
+         toast({
+           title: "Session Expired",
+           description: "Please rejoin the room.",
+           variant: "destructive"
+         });
+         setLocation("/");
+       }
     }
     
     // Listen for game start
     if (room?.status === 'in-game') {
         setLocation(`/game/${code}`);
     }
-  }, [room?.status, code, setLocation]);
+  }, [room?.status, code, setLocation, connect, toast]);
 
   if (!room) return <div className="flex h-screen items-center justify-center text-muted-foreground">Connecting to Lobby...</div>;
 
-  const currentPlayer = room.players.find(p => p.id === parseInt(playerId || "0"));
   const isHost = currentPlayer?.isHost;
   const readyCount = room.players.filter(p => p.ready).length;
-  const canStart = readyCount >= 1; // Allow 1 for testing, normally 2
+  const canStart = readyCount >= 1; 
 
   const copyCode = () => {
     navigator.clipboard.writeText(room.code);

@@ -15,8 +15,13 @@ export default function Home() {
   const [_, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("public");
   const [focusArea, setFocusArea] = useState<"arms" | "legs" | "core" | "total">("total");
-  const [isSearching, setIsSearching] = useState(false);
   const [code, setCode] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [burnoutType, setBurnoutType] = useState('classic');
+  const [roundTime, setRoundTime] = useState(45);
+  const [rounds, setRounds] = useState(3);
+  const [restTime, setRestTime] = useState(15);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
   const createRoom = useCreateRoom();
   const joinRoom = useJoinRoom();
@@ -25,17 +30,24 @@ export default function Home() {
     setIsSearching(true);
     setTimeout(async () => {
       try {
-        const result = await createRoom.mutateAsync({
+        const result = (await createRoom.mutateAsync({
           settings: {
-            focusArea,
-            burnoutType: 'classic',
-            roundTime: 45,
-            rounds: 3,
-            restTime: 15
+            focusArea: focusArea as any,
+            burnoutType,
+            roundTime,
+            rounds,
+            restTime
           },
           isPublic: true,
           hostName: user?.displayName || firebaseUser?.displayName || "Rival"
-        });
+        })) as any;
+        
+        sessionStorage.setItem(`room_token_${result.code}`, result.token || "");
+        const hostPlayer = result.players.find((p: any) => p.isHost);
+        if (hostPlayer) {
+          sessionStorage.setItem(`room_pid_${result.code}`, hostPlayer.id.toString());
+        }
+        
         setLocation(`/room/${result.code}`);
       } catch (e) {
         console.error(e);
@@ -47,10 +59,14 @@ export default function Home() {
   const handleJoinPrivate = async () => {
     if (!code) return;
     try {
-      const result = await joinRoom.mutateAsync({
+      const result = (await joinRoom.mutateAsync({
         code: code.toUpperCase(),
         playerName: user?.displayName || firebaseUser?.displayName || "Rival",
-      });
+      })) as any;
+      
+      sessionStorage.setItem(`room_token_${result.room.code}`, result.token || "");
+      sessionStorage.setItem(`room_pid_${result.room.code}`, result.player.id.toString());
+      
       setLocation(`/room/${result.room.code}`);
     } catch (e) {
       console.error(e);
@@ -131,10 +147,68 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 hover:text-red-500 transition-colors cursor-pointer group uppercase tracking-widest">
-                  <Flame size={12} className="text-red-600" />
-                  <span>2. SHOW ADVANCED MODES</span>
-                  <span className="text-zinc-700 ml-auto italic">Default: Classic Burnout</span>
+                <div className="space-y-4">
+                  <div 
+                    className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 hover:text-red-500 transition-colors cursor-pointer group uppercase tracking-widest"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                  >
+                    <Flame size={12} className="text-red-600" />
+                    <span>2. {showAdvanced ? "HIDE" : "SHOW"} ADVANCED MODES</span>
+                    <span className="text-zinc-700 ml-auto italic">Mode: {burnoutType.toUpperCase()}</span>
+                  </div>
+
+                  {showAdvanced && (
+                    <div className="grid grid-cols-1 gap-4 p-4 rounded-lg bg-zinc-900/30 border border-white/5 animate-in fade-in slide-in-from-top-2">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">GAME MODE</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {['classic', 'pyramid', 'sudden-death', 'time-attack'].map((type) => (
+                            <Button
+                              key={type}
+                              variant="outline"
+                              size="sm"
+                              className={cn(
+                                "h-10 text-[10px] font-bold border-white/5 bg-zinc-900/50",
+                                burnoutType === type && "border-red-600 bg-red-600/10 text-white"
+                              )}
+                              onClick={() => setBurnoutType(type)}
+                            >
+                              {type.toUpperCase().replace('-', ' ')}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">ROUNDS</label>
+                          <Input 
+                            type="number" 
+                            value={rounds} 
+                            onChange={(e) => setRounds(parseInt(e.target.value))}
+                            className="h-10 bg-zinc-900/50 border-white/5 text-center text-xs"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">TIME (S)</label>
+                          <Input 
+                            type="number" 
+                            value={roundTime} 
+                            onChange={(e) => setRoundTime(parseInt(e.target.value))}
+                            className="h-10 bg-zinc-900/50 border-white/5 text-center text-xs"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">REST (S)</label>
+                          <Input 
+                            type="number" 
+                            value={restTime} 
+                            onChange={(e) => setRestTime(parseInt(e.target.value))}
+                            className="h-10 bg-zinc-900/50 border-white/5 text-center text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <Button 

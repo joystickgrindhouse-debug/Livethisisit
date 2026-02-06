@@ -168,6 +168,16 @@ export async function registerRoutes(
       try {
         const message = JSON.parse(data.toString());
         
+        if (message.type === 'TOGGLE_READY') {
+          const playersInRoom = await storage.getRoomPlayers(roomCode);
+          const playerToUpdate = playersInRoom.find(p => p.sessionId === sessionId);
+          if (playerToUpdate) {
+            await storage.updatePlayer(playerToUpdate.id, { ready: !playerToUpdate.ready });
+            broadcast({ type: 'SYNC_ROOM', payload: { ...await storage.getRoom(roomCode), players: await storage.getRoomPlayers(roomCode) } });
+          }
+          return;
+        }
+
         // Auto-fill bots if not enough players (Humanized Bot logic)
         const playersCount = (roomsMap.get(roomCode)?.size || 0);
         if (playersCount < 2) {

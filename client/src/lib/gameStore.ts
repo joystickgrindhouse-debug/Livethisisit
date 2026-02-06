@@ -37,7 +37,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   connect: (roomCode, token, playerId) => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws?roomCode=${roomCode}&token=${token}&playerId=${playerId}`;
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws?roomCode=${roomCode}&sessionId=${token}`;
     
     // Avoid double connections
     if (get().socket?.readyState === WebSocket.OPEN) return;
@@ -89,13 +90,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   toggleReady: () => {
-    // In a real implementation, this sends a message. 
-    // For this prototype, we'll assume the backend handles the REST API call or we send a WS message.
-    // Let's implement this as a WS message if the backend supports it, otherwise API.
-    // Based on schema, we should probably stick to REST for actions, WS for updates.
-    // BUT for low latency, WS is better. I'll simulate an optimistic update via WS if protocol allowed.
-    // The provided schema implies WS messages are Server -> Client mostly, except for maybe custom ones.
-    // We will rely on the backend routes receiving actions and broadcasting updates.
+    get().socket?.send(JSON.stringify({ type: 'TOGGLE_READY', payload: {} }));
   },
 
   startGame: () => {

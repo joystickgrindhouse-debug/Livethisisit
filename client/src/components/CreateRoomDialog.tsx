@@ -29,7 +29,7 @@ export function CreateRoomDialog() {
     if (!hostName && !user) return; // Should validate better
 
     try {
-      const result = await createRoom.mutateAsync({
+      const result = (await createRoom.mutateAsync({
         settings: {
           focusArea,
           burnoutType,
@@ -39,13 +39,14 @@ export function CreateRoomDialog() {
         },
         isPublic,
         hostName: user?.firstName || hostName || "Guest",
-      });
+      })) as any;
 
       setIsOpen(false);
-      // Backend returns room with players. Find self.
-      const self = result.players.find(p => p.isHost);
-      // In a real app we'd store the token.
-      // For now, redirect to room
+      sessionStorage.setItem(`room_token_${result.code}`, result.token || "");
+      const self = result.players.find((p: any) => p.isHost);
+      if (self) {
+        sessionStorage.setItem(`room_pid_${result.code}`, self.id.toString());
+      }
       setLocation(`/room/${result.code}`);
     } catch (e) {
       console.error(e);

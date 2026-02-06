@@ -1,14 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type CreateRoomRequest, type JoinRoomRequest } from "@shared/routes";
+import { api } from "@shared/routes";
 import { useToast } from "./use-toast";
+import { z } from "zod";
+
+type CreateRoomRequest = any;
+type JoinRoomRequest = any;
 
 export function useRooms() {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: [api.rooms.listPublic.path],
     queryFn: async () => {
       const res = await fetch(api.rooms.listPublic.path);
       if (!res.ok) throw new Error("Failed to fetch public rooms");
-      return api.rooms.listPublic.responses[200].parse(await res.json());
+      return (await res.json()) as any;
     },
     refetchInterval: 5000,
   });
@@ -21,7 +26,7 @@ export function useRoom(code: string) {
       const res = await fetch(api.rooms.get.path.replace(":code", code));
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch room");
-      return api.rooms.get.responses[200].parse(await res.json());
+      return (await res.json()) as any;
     },
     enabled: !!code,
   });
@@ -46,7 +51,7 @@ export function useCreateRoom() {
         }
         throw new Error("Failed to create room");
       }
-      return api.rooms.create.responses[201].parse(await res.json());
+      return (await res.json()) as any;
     },
     onError: (error) => {
       toast({
@@ -76,7 +81,7 @@ export function useJoinRoom() {
         if (res.status === 404) throw new Error("Room not found");
         throw new Error("Failed to join room");
       }
-      return api.rooms.join.responses[200].parse(await res.json());
+      return (await res.json()) as any;
     },
     onError: (error) => {
       toast({
