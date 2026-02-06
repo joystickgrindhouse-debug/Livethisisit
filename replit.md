@@ -46,7 +46,19 @@ Preferred communication style: Simple, everyday language.
 - **Real-time sync**: WebSocket messages with typed JSON payloads `{ type: string, payload: any }`
 - **Game State**: Stored in room's gameState JSONB column, includes exercises, scores, active cards, and timing
 
-## External Dependencies
+### Deployment (Vercel)
+- **Framework Preset**: Vite
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Environment Variables Required**:
+  - `DATABASE_URL`: PostgreSQL connection string (Neon or similar)
+  - `SESSION_SECRET`: Random string for session encryption
+  - `REPL_ID`: (Only if using Replit Auth)
+  - `ISSUER_URL`: (Only if using Replit Auth)
+  - `FIREBASE_CONFIG`: (If using Firebase features)
+
+### Vercel Serverless Functions
+Vercel handles the API via rewrites. Ensure that the database connection pool is handled correctly for serverless environments (e.g., using `@neondatabase/serverless` if deploying to Vercel with Neon).
 
 ### Third-Party Services
 - **Replit Auth**: Primary authentication via OpenID Connect (`ISSUER_URL`, `REPL_ID` environment variables)
