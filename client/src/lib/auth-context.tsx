@@ -25,55 +25,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type === 'RIVALIS_HUB_SYNC' && event.data.user) {
         const hubUser = event.data.user;
-        // In a real scenario, we might use hubUser.token to authenticate with Firebase
-        // For now, we'll just sync the profile data if the user is logged in
-        if (firebaseUser) {
-          const userDoc = doc(db, "users", firebaseUser.uid);
-          await setDoc(userDoc, {
-            displayName: hubUser.displayName || hubUser.firstName,
-            profileImageUrl: hubUser.profileImageUrl,
-            hubId: hubUser.id
-          }, { merge: true });
-        }
+        setUser({
+          ...hubUser,
+          displayName: hubUser.displayName || hubUser.firstName,
+          score: hubUser.score || 0,
+          raffleTickets: hubUser.raffleTickets || 0
+        });
+        setLoading(false);
       }
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [firebaseUser]);
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, async (fUser) => {
-      setFirebaseUser(fUser);
-      if (fUser) {
-        const userDoc = doc(db, "users", fUser.uid);
-        
-        // Initial fetch/sync
-        const snap = await getDoc(userDoc);
-        if (!snap.exists()) {
-          const newUser = {
-            id: fUser.uid,
-            email: fUser.email,
-            displayName: fUser.displayName,
-            score: 0,
-            raffleTickets: 0,
-          };
-          await setDoc(userDoc, newUser);
-          setUser(newUser);
-        }
-
-        // Real-time sync for scores/tickets
-        return onSnapshot(userDoc, (doc) => {
-          if (doc.exists()) {
-            setUser(doc.data());
-          }
-          setLoading(false);
-        });
-      } else {
-        setUser(null);
+    
+    // In a real hub environment, the hub will push the user state.
+    // For local dev/testing where no hub is present, we'll set a default guest
+    const timeout = setTimeout(() => {
+      if (loading) {
         setLoading(false);
       }
-    });
+    }, 2000);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      clearTimeout(timeout);
+    };
+  }, [loading]);
+
+  useEffect(() => {
+    // Rid of Firebase onAuthStateChanged as we rely on Hub Sync
+    setLoading(true);
   }, []);
 
   return (

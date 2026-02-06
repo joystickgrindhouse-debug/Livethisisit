@@ -65,26 +65,19 @@ export default function Home() {
       <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
         {loading ? (
           <Loader2 className="animate-spin text-zinc-500" size={20} />
-        ) : firebaseUser ? (
+        ) : (
           <div className="flex items-center gap-4 bg-zinc-900/80 border border-white/5 p-2 rounded-lg backdrop-blur-sm">
             {user?.profileImageUrl && (
               <img src={user.profileImageUrl} alt={user.displayName} className="w-8 h-8 rounded-full border border-white/10" />
             )}
             <div className="flex flex-col items-end">
-              <span className="text-xs font-bold text-white">{user?.displayName || firebaseUser.displayName}</span>
+              <span className="text-xs font-bold text-white">{user?.displayName || "Rival"}</span>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-zinc-400 flex items-center gap-1"><Trophy size={10} className="text-yellow-500" /> {user?.score || 0}</span>
                 <span className="text-[10px] text-zinc-400 flex items-center gap-1"><Ticket size={10} className="text-red-500" /> {user?.raffleTickets || 0}</span>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => logout()} className="text-zinc-500 hover:text-white">
-              <LogOut size={16} />
-            </Button>
           </div>
-        ) : (
-          <Button onClick={() => signInWithGoogle()} className="bg-white text-black hover:bg-zinc-200 gap-2 font-bold text-xs uppercase tracking-widest">
-            <LogIn size={14} /> SIGN IN
-          </Button>
         )}
       </div>
       <div className="text-center mb-12 relative z-10">

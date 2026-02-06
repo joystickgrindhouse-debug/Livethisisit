@@ -25,8 +25,22 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-          <Toaster />
-          <Router />
+          <div className="flex h-screen w-full overflow-hidden bg-black">
+            {/* Hub Sidebar Iframe */}
+            <div className="w-[320px] border-r border-white/5 h-full hidden lg:block">
+              <iframe 
+                src="https://rivalishub.vercel.app/" 
+                className="w-full h-full border-none"
+                title="Rivalis Hub"
+              />
+            </div>
+            
+            {/* Main Application Area */}
+            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+              <Toaster />
+              <Router />
+            </div>
+          </div>
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
