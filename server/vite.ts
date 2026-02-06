@@ -31,12 +31,20 @@ export async function setupVite(server: Server, app: Express) {
 
   app.use(vite.middlewares);
 
-  app.get("*", async (req, res, next) => {
+  app.use(async (req, res, next) => {
     const url = req.originalUrl;
+
+    if (url.startsWith("/api")) {
+      return next();
+    }
+
+    if (req.method !== "GET") {
+      return next();
+    }
 
     try {
       const clientTemplate = path.resolve(
-        import.meta.dirname,
+        path.dirname(new URL(import.meta.url).pathname),
         "..",
         "client",
         "index.html",
